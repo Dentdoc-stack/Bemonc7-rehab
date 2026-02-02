@@ -11,14 +11,39 @@ class DataCache {
     private data: IngestedData | null = null;
     private refreshTimer: NodeJS.Timeout | null = null;
     private isRefreshing = false;
+    private initPromise: Promise<void> | null = null;
 
     /**
      * Initialize cache and start auto-refresh
      */
     async initialize(): Promise<void> {
-        console.log('Initializing data cache...');
-        await this.refresh();
-        this.startAutoRefresh();
+        // If already initialized, return immediately
+        if (this.data !== null) {
+            console.log('Cache already initialized, skipping...');
+            return;
+        }
+
+        // If initialization is in progress, wait for it
+        if (this.initPromise) {
+            console.log('Waiting for ongoing initialization...');
+            return this.initPromise;
+        }
+
+        // Start initialization
+        this.initPromise = (async () => {
+            try {
+                console.log('Initializing data cache...');
+                await this.refresh();
+                this.startAutoRefresh();
+                console.log('✅ Cache initialization complete');
+            } catch (error) {
+                console.error('❌ Cache initialization failed:', error);
+                this.initPromise = null; // Reset so it can be retried
+                throw error;
+            }
+        })();
+
+        return this.initPromise;
     }
 
     /**
@@ -26,11 +51,15 @@ class DataCache {
      */
     async refresh(): Promise<IngestedData> {
         if (this.isRefreshing) {
-            console.warn('Refresh already in progress, skipping...');
+            console.warn('Refresh already in progress, waiting...');
+            // Wait for the ongoing refresh to complete (max 60 seconds)
+            let attempts = 0;
+            while (this.isRefreshing && attempts < 60) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                attempts++;
+            }
             if (this.data) return this.data;
-            // Wait for ongoing refresh
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            return this.data!;
+            throw new Error('Refresh timeout - cache data not available');
         }
 
         this.isRefreshing = true;

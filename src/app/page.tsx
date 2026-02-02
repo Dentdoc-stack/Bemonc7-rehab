@@ -15,15 +15,22 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
-  const loadData = async () => {
+  const loadData = async (retryCount = 0) => {
     try {
       console.log('Loading data from backend cache...');
       
       // Fetch tasks from backend API (has full data - all 2916 tasks)
       const [tasksResponse, complianceResponse] = await Promise.all([
-        fetch('/api/tasks').then(res => res.ok ? res.json() : null).catch(() => null),
+        fetch('/api/tasks').then(res => res.ok ? res.json() : res.status === 503 ? { status: 503 } : null).catch(() => null),
         fetch('/api/compliance').then(res => res.ok ? res.json() : null).catch(() => null),
       ]);
+
+      // Handle 503 (service initializing) - retry up to 3 times
+      if (tasksResponse?.status === 503 && retryCount < 3) {
+        console.log(`Service initializing, retrying in 2 seconds... (attempt ${retryCount + 1}/3)`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return loadData(retryCount + 1);
+      }
 
       // Extract tasks from backend response and parse dates
       const rawTasks = tasksResponse?.data || [];
