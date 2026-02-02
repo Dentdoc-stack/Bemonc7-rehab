@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { TaskWithStatus, PackageComplianceMap } from '@/types';
-import { fetchAllGoogleSheets, clearXLSXCache } from '@/lib/googleSheetsFetcher';
 import Dashboard from '@/components/Dashboard';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
@@ -17,13 +16,27 @@ export default function Home() {
 
   const loadData = async () => {
     try {
-      console.log('Loading data from Google Sheets...');
+      console.log('Loading data from backend cache...');
       
-      // Fetch tasks and compliance data in parallel
-      const [fetchedTasks, complianceResponse] = await Promise.all([
-        fetchAllGoogleSheets(),
+      // Fetch tasks from backend API (has full data - all 2916 tasks)
+      const [sitesResponse, complianceResponse] = await Promise.all([
+        fetch('/api/sites').then(res => res.ok ? res.json() : null).catch(() => null),
         fetch('/api/compliance').then(res => res.ok ? res.json() : null).catch(() => null),
       ]);
+
+      // Extract tasks from backend response
+      const fetchedTasks: TaskWithStatus[] = [];
+      if (sitesResponse?.sites) {
+        for (const site of sitesResponse.sites) {
+          if (site.tasks && Array.isArray(site.tasks)) {
+            fetchedTasks.push(...site.tasks);
+          }
+        }
+      }
+
+      if (fetchedTasks.length === 0) {
+        throw new Error('No tasks received from backend API');
+      }
 
       setTasks(fetchedTasks);
       setLastRefresh(new Date());
@@ -38,22 +51,22 @@ export default function Home() {
         setPackageCompliance(null);
       }
 
-      console.log(`✅ Successfully loaded ${fetchedTasks.length} tasks`);
+      console.log(`✅ Successfully loaded ${fetchedTasks.length} tasks from backend`);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       console.error('❌ Error loading data:', errorMsg);
-      setError(`Failed to load data from Google Sheets: ${errorMsg}`);
+      setError(`Failed to load data from backend: ${errorMsg}`);
     }
   };
 
   const handleManualRefresh = async () => {
     setRefreshing(true);
     try {
-      // Clear cache before refreshing
-      await clearXLSXCache();
-      console.log('Cache cleared, fetching fresh data...');
+      // Trigger backend cache refresh
+      await fetch('/api/refresh', { method: 'POST' }).catch(() => null);
+      console.log('Backend cache refresh triggered...');
     } catch (err) {
-      console.warn('Error clearing cache:', err);
+      console.warn('Error triggering refresh:', err);
     }
     await loadData();
     setRefreshing(false);
