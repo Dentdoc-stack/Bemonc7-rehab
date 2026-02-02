@@ -5,6 +5,7 @@ import { TaskWithStatus, PackageComplianceMap } from '@/types';
 import Dashboard from '@/components/Dashboard';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
+import { parseTasksFromAPI } from '@/lib/utils';
 
 export default function Home() {
   const [tasks, setTasks] = useState<TaskWithStatus[] | null>(null);
@@ -24,8 +25,9 @@ export default function Home() {
         fetch('/api/compliance').then(res => res.ok ? res.json() : null).catch(() => null),
       ]);
 
-      // Extract tasks from backend response
-      const fetchedTasks: TaskWithStatus[] = tasksResponse?.data || [];
+      // Extract tasks from backend response and parse dates
+      const rawTasks = tasksResponse?.data || [];
+      const fetchedTasks: TaskWithStatus[] = parseTasksFromAPI(rawTasks);
 
       if (fetchedTasks.length === 0) {
         throw new Error('No tasks received from backend API');

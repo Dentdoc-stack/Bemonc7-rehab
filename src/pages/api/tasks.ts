@@ -17,6 +17,7 @@ export default async function handler(
     try {
         // Initialize cache if not already done
         if (!dataCache.isInitialized()) {
+            console.log('Cache not initialized, initializing now...');
             await dataCache.initialize();
         }
 
