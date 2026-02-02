@@ -19,20 +19,13 @@ export default function Home() {
       console.log('Loading data from backend cache...');
       
       // Fetch tasks from backend API (has full data - all 2916 tasks)
-      const [sitesResponse, complianceResponse] = await Promise.all([
-        fetch('/api/sites').then(res => res.ok ? res.json() : null).catch(() => null),
+      const [tasksResponse, complianceResponse] = await Promise.all([
+        fetch('/api/tasks').then(res => res.ok ? res.json() : null).catch(() => null),
         fetch('/api/compliance').then(res => res.ok ? res.json() : null).catch(() => null),
       ]);
 
       // Extract tasks from backend response
-      const fetchedTasks: TaskWithStatus[] = [];
-      if (sitesResponse?.sites) {
-        for (const site of sitesResponse.sites) {
-          if (site.tasks && Array.isArray(site.tasks)) {
-            fetchedTasks.push(...site.tasks);
-          }
-        }
-      }
+      const fetchedTasks: TaskWithStatus[] = tasksResponse?.data || [];
 
       if (fetchedTasks.length === 0) {
         throw new Error('No tasks received from backend API');

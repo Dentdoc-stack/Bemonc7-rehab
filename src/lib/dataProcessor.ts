@@ -107,14 +107,14 @@ export function groupTasksBySite(tasks: TaskWithStatus[]): SiteAggregate[] {
     // Get max dates
     const plannedFinishes = siteTasks
       .map(t => t.planned_finish)
-      .filter((d): d is Date => d !== null);
+      .filter((d): d is Date => d instanceof Date && d !== null);
     const maxPlannedFinish = plannedFinishes.length > 0
       ? new Date(Math.max(...plannedFinishes.map(d => d.getTime())))
       : null;
 
     const lastUpdates = siteTasks
       .map(t => t.last_updated)
-      .filter((d): d is Date => d !== null);
+      .filter((d): d is Date => d instanceof Date && d !== null);
     const maxLastUpdated = lastUpdates.length > 0
       ? new Date(Math.max(...lastUpdates.map(d => d.getTime())))
       : null;
