@@ -341,8 +341,8 @@ function parseIPCData(sheet: WorkSheet & Record<string, unknown>, XLSX: { utils:
         'released': 'released',
     };
 
-    // IPC columns: Y, Z, AA, AB, AC, AD (0-indexed: 24, 25, 26, 27, 28, 29)
-    for (let col = 24; col <= 29; col++) {
+    // IPC columns: Y, Z, AA, AB, AC (0-indexed: 24, 25, 26, 27, 28)
+    for (let col = 24; col <= 28; col++) {
         const ipcNumber = `IPC ${col - 23}`;
         
         // Row 2 is index 1 (0-indexed)
@@ -375,7 +375,7 @@ function parseIPCData(sheet: WorkSheet & Record<string, unknown>, XLSX: { utils:
 
 /**
  * Fetch IPC data from all published sheets
- * Reads row 2, columns Y-AD (IPC 1-6 statuses)
+ * Reads row 2, columns Y-AC (IPC 1-5 statuses)
  */
 export async function fetchAllIPCData(): Promise<IPCData> {
     console.log('Extracting IPC data from published XLSX files...');
