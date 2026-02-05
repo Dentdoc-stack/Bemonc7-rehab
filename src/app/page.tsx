@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { TaskWithStatus, PackageComplianceMap } from '@/types';
+import { TaskWithStatus, PackageComplianceMap, IPCData } from '@/types';
 import Dashboard from '@/components/Dashboard';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
@@ -10,6 +10,7 @@ import { parseTasksFromAPI } from '@/lib/utils';
 export default function Home() {
   const [tasks, setTasks] = useState<TaskWithStatus[] | null>(null);
   const [packageCompliance, setPackageCompliance] = useState<PackageComplianceMap | null>(null);
+  const [ipcData, setIPCData] = useState<IPCData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +52,16 @@ export default function Home() {
       } else {
         console.warn('⚠️ Compliance data not available');
         setPackageCompliance(null);
+      }
+
+      // Set IPC data if available
+      if (complianceResponse?.ipcData) {
+        console.log('[Page] IPC data received from API:', complianceResponse.ipcData);
+        setIPCData(complianceResponse.ipcData);
+        console.log('✅ IPC data loaded:', complianceResponse.ipcData);
+      } else {
+        console.warn('[Page] ⚠️ IPC data not available in response');
+        setIPCData(null);
       }
 
       console.log(`✅ Successfully loaded ${fetchedTasks.length} tasks from backend`);
@@ -141,7 +152,7 @@ export default function Home() {
           </div>
         </div>
 
-        <Dashboard tasks={tasks} packageCompliance={packageCompliance} onReset={() => { }} />
+        <Dashboard tasks={tasks} packageCompliance={packageCompliance} ipcData={ipcData} onReset={() => { }} />
       </div>
     );
   }

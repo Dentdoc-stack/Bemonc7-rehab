@@ -3,7 +3,7 @@
  */
 
 import { SHEET_SOURCES } from './config';
-import type { PackageCompliance, ComplianceStatus, Task } from '@/types';
+import type { PackageCompliance, ComplianceStatus, Task, IPCData, IPCStatus, IPCRecord } from '@/types';
 import { parseDMY } from '../dataParser';
 
 interface RawComplianceData {
@@ -309,5 +309,107 @@ export function mapRowToTask(row: SheetRow, packageId: string, packageName: stri
     } catch (error) {
         console.error('Error mapping row to task:', error, row);
         return null;
+    }
+}
+
+// IPC Data Types
+interface SheetCell {
+    v?: string | number | boolean | null;
+    t?: string;
+    [key: string]: unknown;
+}
+
+interface WorkSheet {
+    [cellKey: string]: SheetCell | undefined;
+}
+
+/**
+ * Parse IPC data from sheet row 2, columns Y-AD (0-indexed 24-29)
+ */
+function parseIPCData(sheet: WorkSheet & Record<string, unknown>, XLSX: { utils: { encode_cell: (ref: { r: number; c: number }) => string } }): IPCData {
+    console.log('[IPCData] Starting to parse IPC data...');
+    console.log('[IPCData] Sheet !ref:', sheet['!ref']);
+    console.log('[IPCData] All sheet keys:', Object.keys(sheet).filter(k => !k.startsWith('!')).slice(0, 50));
+
+    const records: IPCRecord[] = [];
+    
+    // Status mapping
+    const statusMap: Record<string, IPCStatus> = {
+        'not submitted': 'not submitted',
+        'submitted': 'submitted',
+        'in process': 'in process',
+        'released': 'released',
+    };
+
+    // IPC columns: Y, Z, AA, AB, AC, AD (0-indexed: 24, 25, 26, 27, 28, 29)
+    for (let col = 24; col <= 29; col++) {
+        const ipcNumber = `IPC ${col - 23}`;
+        
+        // Row 2 is index 1 (0-indexed)
+        const statusCell = XLSX.utils.encode_cell({ r: 1, c: col });
+        console.log(`[IPCData] Reading Row 2, Column ${col} (${statusCell})...`);
+        
+        const cellValue = sheet[statusCell] as SheetCell | string | undefined;
+        console.log(`[IPCData] Cell ${statusCell} raw value:`, cellValue);
+        
+        // Extract value safely
+        const statusRaw = cellValue && typeof cellValue === 'object' && 'v' in cellValue && cellValue.v 
+            ? String(cellValue.v).toLowerCase().trim() 
+            : null;
+        
+        console.log(`[IPCData] Cell ${statusCell}: value="${statusRaw}", parsed="${statusRaw}"`);
+        
+        const status = statusRaw && statusMap[statusRaw] ? statusMap[statusRaw] : null;
+        
+        records.push({
+            ipcNumber,
+            status,
+        });
+    }
+
+    console.log('[IPCData] Final parsed records:', records);
+    console.log('[IPCData] Non-null records:', records.filter(r => r.status !== null).length);
+
+    return { records };
+}
+
+/**
+ * Fetch IPC data from all published sheets
+ * Reads row 2, columns Y-AD (IPC 1-6 statuses)
+ */
+export async function fetchAllIPCData(): Promise<IPCData> {
+    console.log('Extracting IPC data from published XLSX files...');
+
+    try {
+        // For simplicity, fetch from first sheet source
+        const source = SHEET_SOURCES[0];
+        console.log(`📋 Fetching IPC data for ${source.packageId}...`);
+
+        const response = await fetch(source.publishedXlsxUrl);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch XLSX: ${response.statusText}`);
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        const data = new Uint8Array(arrayBuffer);
+
+        // Import XLSX dynamically
+        const XLSX = await import('xlsx');
+        const workbook = XLSX.read(data, { type: 'array', cellDates: false });
+
+        // Find Data_Entry sheet
+        let sheetName = 'Data_Entry';
+        if (!workbook.SheetNames.includes(sheetName)) {
+            sheetName = workbook.SheetNames[0];
+        }
+
+        const worksheet = workbook.Sheets[sheetName];
+        const ipcData = parseIPCData(worksheet, XLSX);
+
+        console.log('✅ IPC data extracted:', ipcData);
+        return ipcData;
+    } catch (error) {
+        console.error('Error extracting IPC data:', error);
+        return { records: [] };
     }
 }

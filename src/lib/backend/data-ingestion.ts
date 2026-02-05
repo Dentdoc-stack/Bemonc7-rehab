@@ -3,13 +3,14 @@
  * Fetches Google Sheets, processes tasks with status computation, deduplicates
  */
 
-import { fetchAllSheets, mapRowToTask, fetchAllComplianceData } from './google-sheets-client';
+import { fetchAllSheets, mapRowToTask, fetchAllComplianceData, fetchAllIPCData } from './google-sheets-client';
 import { computeTaskStatus } from '../dataParser';
 import { groupTasksBySite, computeKPIs } from '../dataProcessor';
 import { SHEET_SOURCES } from './config';
-import type { Task, TaskWithStatus, SiteAggregate, DashboardKPIs, PackageComplianceMap } from '@/types';
+import type { Task, TaskWithStatus, SiteAggregate, DashboardKPIs, PackageComplianceMap, IPCData } from '@/types';
 
 export interface IngestedData {
+    ipcData: IPCData;
     tasks: TaskWithStatus[];
     sites: SiteAggregate[];
     kpis: DashboardKPIs;
@@ -31,10 +32,11 @@ export async function ingestAllSheets(): Promise<IngestedData> {
     console.log('=== STARTING DATA INGESTION ===');
     const startTime = Date.now();
 
-    // Step 1: Fetch all sheets and compliance data in parallel
-    const [sheetsData, complianceData] = await Promise.all([
+    // Step 1: Fetch all sheets, compliance data, and IPC data in parallel
+    const [sheetsData, complianceData, ipcData] = await Promise.all([
         fetchAllSheets(),
         fetchAllComplianceData(),
+        fetchAllIPCData(),
     ]);
 
     // Convert compliance Map to Record
@@ -94,6 +96,7 @@ export async function ingestAllSheets(): Promise<IngestedData> {
     console.log(`=== INGESTION COMPLETE (${endTime - startTime}ms) ===`);
 
     return {
+        ipcData,
         tasks,
         sites,
         kpis,

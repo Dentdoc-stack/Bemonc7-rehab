@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState, useCallback } from 'react';
-import { TaskWithStatus, FilterState, PackageComplianceMap } from '@/types';
+import { TaskWithStatus, FilterState, PackageComplianceMap, IPCData } from '@/types';
 import {
   groupTasksBySite,
   computeKPIs,
@@ -9,6 +9,7 @@ import {
   getFilterOptions
 } from '@/lib/dataProcessor';
 import KPICards from './KPICards';
+import IPCCard from './IPCCard';
 import Filters from './Filters';
 import Charts from './Charts';
 import SiteTable from './SiteTable';
@@ -22,10 +23,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 interface DashboardProps {
   tasks: TaskWithStatus[];
   packageCompliance?: PackageComplianceMap | null;
+  ipcData?: IPCData | null;
   onReset: () => void;
 }
 
-export default function Dashboard({ tasks, packageCompliance, onReset }: DashboardProps) {
+export default function Dashboard({ tasks, packageCompliance, ipcData, onReset }: DashboardProps) {
   const [filters, setFilters] = useState<FilterState>({
     packageNames: [],
     districts: [],
@@ -151,6 +153,9 @@ export default function Dashboard({ tasks, packageCompliance, onReset }: Dashboa
       <div className="container mx-auto px-4 py-8">
         {/* KPI Cards */}
         <KPICards kpis={kpis} />
+
+        {/* IPC Card */}
+        {ipcData && <IPCCard ipcData={ipcData} />}
 
         {/* Package Compliance Card */}
         {packageCompliance && (
